@@ -1,0 +1,46 @@
+/* Custom styles for the rich text editor */
+
+.ProseMirror,
+.tiptap,
+.tiptap-editor {
+  font-family: "DM Sans", sans-serif !important;
+}
+
+.ProseMirror *,
+.tiptap *,
+.tiptap-editor * {
+  font-family: "DM Sans", sans-serif !important;
+}
+
+/* Ensure font family is applied even when overridden by other styles */
+.ProseMirror p,
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6,
+.ProseMirror ul,
+.ProseMirror ol,
+.ProseMirror li,
+.ProseMirror blockquote,
+.ProseMirror pre,
+.ProseMirror div,
+.ProseMirror span,
+.ProseMirror a {
+  font-family: "DM Sans", sans-serif !important;
+}
+
+/* Ensure font family is preserved even when formatting is applied */
+.ProseMirror strong,
+.ProseMirror em,
+.ProseMirror u,
+.ProseMirror s,
+.ProseMirror code {
+  font-family: "DM Sans", sans-serif !important;
+}
+
+/* Force DM Sans to be the first choice in the font family dropdown */
+.font-family-dropdown .font-family-option[data-value="DM Sans"] {
+  order: -1;
+}

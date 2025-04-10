@@ -1,0 +1,11 @@
+services:
+  database:
+    container_name: holidaytribe-postgresql
+    image: postgres
+    restart: always
+    volumes:
+      - ./prisma:/docker-entrypoint-initdb.d
+    env_file:
+      - .env
+    ports:
+      - '5442:5432'
