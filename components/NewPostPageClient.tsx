@@ -28,7 +28,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2, Edit, MoveUp, MoveDown } from "lucide-react";
+import { Plus, Trash2, Edit, MoveUp, MoveDown, X, Search } from "lucide-react";
 import "@/app/editor.css"; // Import custom editor styles
 import {
   Dialog,
@@ -98,8 +98,13 @@ export default function NewPostPage() {
   const [keywords, setKeywords] = useState("");
   const [relatedBlogIds, setRelatedBlogIds] = useState<string[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState("");
+  const [blogSearchTerm, setBlogSearchTerm] = useState("");
+  const [blogSearchResults, setBlogSearchResults] = useState<any[]>([]);
+  const [showBlogSearchResults, setShowBlogSearchResults] = useState(false);
   const [availableBlogs, setAvailableBlogs] = useState<any[]>([]);
   const [isLoadingBlogs, setIsLoadingBlogs] = useState(false);
+  const [selectedBlogDetails, setSelectedBlogDetails] = useState<any[]>([]);
+  const blogSearchRef = useRef<HTMLDivElement>(null);
   const turndownService = new TurndownService();
 
   // Table of Contents state
@@ -428,11 +433,66 @@ export default function NewPostPage() {
     }
   };
 
-  const addRelatedBlog = () => {
-    if (!selectedBlogId) return;
+  // Handle blog search
+  const handleBlogSearch = (searchTerm: string) => {
+    setBlogSearchTerm(searchTerm);
+
+    if (!searchTerm.trim()) {
+      setBlogSearchResults([]);
+      setShowBlogSearchResults(false);
+      return;
+    }
+
+    const results = availableBlogs.filter(
+      (blog) =>
+        (blog.id && blog.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (blog.title &&
+          blog.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    setBlogSearchResults(results);
+    setShowBlogSearchResults(true);
+  };
+
+  // Handle click outside search results
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        blogSearchRef.current &&
+        !blogSearchRef.current.contains(event.target as Node)
+      ) {
+        setShowBlogSearchResults(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const selectBlogFromSearch = (blog: any) => {
+    setSelectedBlogId(blog.id);
+    setBlogSearchTerm("");
+    setShowBlogSearchResults(false);
+    addRelatedBlog(blog);
+  };
+
+  const addRelatedBlog = (blog?: any) => {
+    const blogToAdd =
+      blog || availableBlogs.find((b) => b.id === selectedBlogId);
+
+    if (!blogToAdd) {
+      toast({
+        title: "Error",
+        description: "Blog not found",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Check if already added
-    if (relatedBlogIds.includes(selectedBlogId)) {
+    if (relatedBlogIds.includes(blogToAdd.id)) {
       toast({
         title: "Already added",
         description: "This blog is already in the related blogs list",
@@ -440,13 +500,26 @@ export default function NewPostPage() {
       return;
     }
 
-    setRelatedBlogIds((prev) => [...prev, selectedBlogId]);
+    setRelatedBlogIds((prev) => [...prev, blogToAdd.id]);
+    setSelectedBlogDetails((prev) => [...prev, blogToAdd]);
     setSelectedBlogId("");
   };
 
   const removeRelatedBlog = (blogId: string) => {
     setRelatedBlogIds((prev) => prev.filter((id) => id !== blogId));
+    setSelectedBlogDetails((prev) => prev.filter((blog) => blog.id !== blogId));
   };
+
+  // Update selectedBlogDetails when relatedBlogIds changes or availableBlogs is fetched
+  useEffect(() => {
+    if (availableBlogs.length > 0 && relatedBlogIds.length > 0) {
+      const details = relatedBlogIds
+        .map((id) => availableBlogs.find((blog) => blog.id === id))
+        .filter((blog) => blog !== undefined);
+
+      setSelectedBlogDetails(details);
+    }
+  }, [availableBlogs, relatedBlogIds]);
 
   const cleanImageContainers = (htmlContent: string) => {
     // Create a temporary DOM element to parse the HTML
@@ -1419,58 +1492,99 @@ export default function NewPostPage() {
             <CardTitle>Most Read Blogs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Select
-                value={selectedBlogId}
-                onValueChange={setSelectedBlogId}
-                disabled={isLoadingBlogs}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a blog to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableBlogs.length > 0 ? (
-                    availableBlogs.map((blog) => (
-                      <SelectItem key={blog.id} value={blog.id || ""}>
-                        {blog.id || "No ID"}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-blogs" disabled>
-                      No blogs available
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                onClick={addRelatedBlog}
-                disabled={isLoadingBlogs || !selectedBlogId}
-              >
-                Add Blog
-              </Button>
+            <div className="relative" ref={blogSearchRef}>
+              <div className="flex items-center border rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <Search className="h-4 w-4 mr-2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search blogs by ID or title..."
+                  value={blogSearchTerm}
+                  onChange={(e) => handleBlogSearch(e.target.value)}
+                  className="flex-1 border-0 bg-transparent p-0 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoadingBlogs}
+                />
+                {blogSearchTerm && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 rounded-full"
+                    onClick={() => {
+                      setBlogSearchTerm("");
+                      setBlogSearchResults([]);
+                      setShowBlogSearchResults(false);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              {showBlogSearchResults && blogSearchResults.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-popover rounded-md border shadow-md max-h-56 overflow-auto">
+                  <ul className="py-1">
+                    {blogSearchResults.map((blog) => (
+                      <li
+                        key={blog.id}
+                        className="px-2 py-1.5 text-sm hover:bg-muted cursor-pointer"
+                        onClick={() => selectBlogFromSearch(blog)}
+                      >
+                        <div className="font-medium">
+                          {blog.title || "Untitled"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ID: {blog.id}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            {relatedBlogIds.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {relatedBlogIds.map((id) => {
-                  const blog = availableBlogs.find((b) => b.id === id);
-                  return (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full"
-                    >
-                      <span>{id}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeRelatedBlog(id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <span className="sr-only">Remove</span>×
-                      </button>
+            {selectedBlogDetails.length > 0 && (
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                {selectedBlogDetails.map((blog) => (
+                  <div
+                    key={blog.id}
+                    className="relative flex border rounded-md overflow-hidden"
+                  >
+                    {blog.featureImage && (
+                      <div className="w-24 h-auto bg-muted relative">
+                        <Image
+                          src={blog.featureImage}
+                          alt={
+                            blog.featureImageAlt || blog.title || "Blog image"
+                          }
+                          className="object-cover"
+                          fill
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 p-3 pl-4">
+                      <div className="font-medium line-clamp-1">
+                        {blog.title || "Untitled"}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        ID: {blog.id}
+                      </div>
+                      {blog.excerpt && (
+                        <p className="text-sm mt-1 line-clamp-2">
+                          {blog.excerpt}
+                        </p>
+                      )}
                     </div>
-                  );
-                })}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-2 right-2 h-6 w-6 p-0 rounded-full bg-background/80 hover:bg-background"
+                      onClick={() => removeRelatedBlog(blog.id)}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1995,7 +2109,7 @@ export default function NewPostPage() {
           <Label htmlFor="status">Status</Label>
           <Select
             value={postStatus}
-            onValueChange={(value) =>
+            onValueChange={(value: any) =>
               setPostStatus(value as "DRAFT" | "PUBLISHED" | "ARCHIVED")
             }
           >
