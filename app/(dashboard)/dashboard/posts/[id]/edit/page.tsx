@@ -27,6 +27,8 @@ import {
   Edit,
   MoveUp,
   MoveDown,
+  X,
+  Search,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
@@ -65,7 +67,6 @@ function EditPostContent() {
   const [isAuthor, setIsAuthor] = useState(false);
   const editor = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [packageIds, setPackageIds] = useState<string[]>([]);
   const [packageInput, setPackageInput] = useState("");
   const [packages, setPackages] = useState<any[]>([]);
   const [isLoadingPackages, setIsLoadingPackages] = useState(false);
@@ -77,8 +78,13 @@ function EditPostContent() {
   const [keywords, setKeywords] = useState("");
   const [relatedBlogIds, setRelatedBlogIds] = useState<string[]>([]);
   const [selectedBlogId, setSelectedBlogId] = useState("");
+  const [blogSearchTerm, setBlogSearchTerm] = useState("");
+  const [blogSearchResults, setBlogSearchResults] = useState<any[]>([]);
+  const [showBlogSearchResults, setShowBlogSearchResults] = useState(false);
   const [availableBlogs, setAvailableBlogs] = useState<any[]>([]);
   const [isLoadingBlogs, setIsLoadingBlogs] = useState(false);
+  const [selectedBlogDetails, setSelectedBlogDetails] = useState<any[]>([]);
+  const blogSearchRef = useRef<HTMLDivElement>(null);
   const [isContentModalOpen, setIsContentModalOpen] = useState(false);
   const [modalContent, setModalContent] = useState("");
   const modalContentRef = useRef<HTMLDivElement>(null);
@@ -208,6 +214,27 @@ function EditPostContent() {
           featureImageAlt: post.featureImageAlt,
         });
 
+        // Set post content and process packages
+        if (post.content) {
+          // Temporarily parse the content to extract packages
+          const { filteredContent, packageContent } = filterPackagesFromContent(
+            post.content
+          );
+
+          // Store packages for later restoration
+          if (packageContent) {
+            console.log(
+              "Found packages in the loaded content, storing for later use"
+            );
+            setHiddenPackages(packageContent);
+          }
+
+          // Set the filtered content (without packages) as the editor content
+          setContent(filteredContent);
+        } else {
+          setContent("");
+        }
+
         // Log relatedBlogIds to verify if they exist in the fetched data
         console.log("Post related blog IDs:", post.relatedBlogIds);
 
@@ -240,18 +267,6 @@ function EditPostContent() {
         if (post.tableOfContents) {
           console.log("Loading table of contents:", post.tableOfContents);
           setTableOfContents(post.tableOfContents);
-        }
-
-        // Load saved package IDs if available
-        if (post.packageIds && Array.isArray(post.packageIds)) {
-          console.log("Loading saved package IDs:", post.packageIds);
-          setPackageIds(post.packageIds);
-
-          // Fetch package data for each ID
-          const fetchPromises = post.packageIds.map((pkgId: string) =>
-            fetchPackage(pkgId)
-          );
-          await Promise.all(fetchPromises);
         }
 
         // Create database media mapping first (used throughout the process)
@@ -662,7 +677,9 @@ function EditPostContent() {
     setIsLoading(true);
 
     try {
-      console.log("Starting post submission with improved image handling");
+      console.log(
+        "Starting post submission with improved image and package handling"
+      );
 
       // Get the current editor content
       const editorElement = document.querySelector(".ProseMirror");
@@ -675,8 +692,38 @@ function EditPostContent() {
       console.log("Cleaned content of ALT badges before submission");
 
       // Restore package blocks to the content before saving
-      finalContent = restorePackagesToContent(finalContent);
-      console.log("Restored package blocks to content before submission");
+      if (hiddenPackages) {
+        console.log(
+          "Found hidden packages to restore:",
+          hiddenPackages.length,
+          "bytes"
+        );
+
+        // Log package content details for debugging
+        try {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(hiddenPackages, "text/html");
+          const packageWrappers = doc.querySelectorAll(".package-wrapper");
+          console.log(
+            `Restoring ${packageWrappers.length} package wrappers to content`
+          );
+        } catch (error) {
+          console.error("Error parsing hiddenPackages:", error);
+        }
+
+        // Restore packages to the content
+        finalContent = restorePackagesToContent(finalContent);
+        console.log("Restored package blocks to content before submission");
+      } else {
+        console.log("No hidden packages found to restore");
+      }
+
+      // Log the final content length to help diagnose if packages are included
+      console.log(
+        "Final content length for submission:",
+        finalContent.length,
+        "bytes"
+      );
 
       // Fetch current media from the API to ensure we don't lose existing images
       console.log("Fetching current post media to ensure persistence");
@@ -798,7 +845,6 @@ function EditPostContent() {
         featureImageAlt,
         media: mediaItems,
         cardBlocks,
-        packageIds,
         customTitle,
         keywords,
         relatedBlogIds,
@@ -1056,7 +1102,7 @@ function EditPostContent() {
     if (!packageInput.trim()) return;
 
     // Check if already added
-    if (packageIds.includes(packageInput)) {
+    if (packages.some((p) => p.id === packageInput)) {
       toast({
         title: "Already added",
         description: "This package ID is already in the list",
@@ -1066,13 +1112,11 @@ function EditPostContent() {
 
     const success = await fetchPackage(packageInput);
     if (success) {
-      setPackageIds((prev) => [...prev, packageInput]);
       setPackageInput("");
     }
   };
 
   const removePackage = (packageId: string) => {
-    setPackageIds((prev) => prev.filter((id) => id !== packageId));
     setPackages((prev) => prev.filter((p) => p.id !== packageId));
   };
 
@@ -1429,11 +1473,66 @@ function EditPostContent() {
     }
   };
 
-  const addRelatedBlog = () => {
-    if (!selectedBlogId) return;
+  // Handle blog search
+  const handleBlogSearch = (searchTerm: string) => {
+    setBlogSearchTerm(searchTerm);
+
+    if (!searchTerm.trim()) {
+      setBlogSearchResults([]);
+      setShowBlogSearchResults(false);
+      return;
+    }
+
+    const results = availableBlogs.filter(
+      (blog) =>
+        (blog.id && blog.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (blog.title &&
+          blog.title.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    setBlogSearchResults(results);
+    setShowBlogSearchResults(true);
+  };
+
+  // Handle click outside search results
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        blogSearchRef.current &&
+        !blogSearchRef.current.contains(event.target as Node)
+      ) {
+        setShowBlogSearchResults(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const selectBlogFromSearch = (blog: any) => {
+    setSelectedBlogId(blog.id);
+    setBlogSearchTerm("");
+    setShowBlogSearchResults(false);
+    addRelatedBlog(blog);
+  };
+
+  const addRelatedBlog = (blog?: any) => {
+    const blogToAdd =
+      blog || availableBlogs.find((b) => b.id === selectedBlogId);
+
+    if (!blogToAdd) {
+      toast({
+        title: "Error",
+        description: "Blog not found",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Check if already added
-    if (relatedBlogIds.includes(selectedBlogId)) {
+    if (relatedBlogIds.includes(blogToAdd.id)) {
       toast({
         title: "Already added",
         description: "This blog is already in the related blogs list",
@@ -1441,13 +1540,26 @@ function EditPostContent() {
       return;
     }
 
-    setRelatedBlogIds((prev) => [...prev, selectedBlogId]);
+    setRelatedBlogIds((prev) => [...prev, blogToAdd.id]);
+    setSelectedBlogDetails((prev) => [...prev, blogToAdd]);
     setSelectedBlogId("");
   };
 
   const removeRelatedBlog = (blogId: string) => {
     setRelatedBlogIds((prev) => prev.filter((id) => id !== blogId));
+    setSelectedBlogDetails((prev) => prev.filter((blog) => blog.id !== blogId));
   };
+
+  // Update selectedBlogDetails when relatedBlogIds changes or availableBlogs is fetched
+  useEffect(() => {
+    if (availableBlogs.length > 0 && relatedBlogIds.length > 0) {
+      const details = relatedBlogIds
+        .map((id) => availableBlogs.find((blog) => blog.id === id))
+        .filter((blog) => blog !== undefined);
+
+      setSelectedBlogDetails(details);
+    }
+  }, [availableBlogs, relatedBlogIds]);
 
   // Table of Contents functions
   const generateTableOfContents = () => {
@@ -1836,60 +1948,97 @@ function EditPostContent() {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, "text/html");
 
-      // Find all package blocks - using a more targeted approach to avoid duplicates
-      const packageBlocks = doc.querySelectorAll(
-        '.packages-block, [data-editor-block="package-cards"]'
-      );
-
       // Track processed elements to avoid duplicates
       const processedElements = new Set();
       const foundPackages: Array<{ id: string; element: HTMLElement | null }> =
         [];
 
+      // Create a fingerprint for an element to help with deduplication
+      const getElementFingerprint = (el: Element): string => {
+        // Use element attributes and structure to create a unique fingerprint
+        const attrs = Array.from(el.attributes)
+          .map((attr) => `${attr.name}="${attr.value}"`)
+          .join(" ");
+
+        // Include a truncated version of innerHTML to avoid excessive memory usage
+        const content = el.innerHTML.substring(0, 100);
+
+        // Include node name and position in parent
+        const parent = el.parentElement;
+        let position = 0;
+        if (parent) {
+          position = Array.from(parent.children).indexOf(el);
+        }
+
+        return `${el.nodeName}-pos${position}-${attrs}-${content.length}`;
+      };
+
+      // Find all explicitly marked package blocks first
+      const packageBlocks = doc.querySelectorAll(
+        '.packages-block, [data-editor-block="package-cards"]'
+      );
+
       // Process explicitly marked package blocks first
       packageBlocks.forEach((block, index) => {
-        // Create a unique identifier for this element based on its content or position
-        const blockContent = block.innerHTML.substring(0, 50);
-        const blockId = `pkg-${blockContent.length}-${index}`;
+        const fingerprint = getElementFingerprint(block);
 
-        if (!processedElements.has(blockId)) {
-          processedElements.add(blockId);
+        if (!processedElements.has(fingerprint)) {
+          processedElements.add(fingerprint);
           foundPackages.push({
             id: `pkg-explicit-${index}`,
             element: block as HTMLElement,
           });
+
+          // Mark this element and its parent to avoid duplicates
+          if (block.parentElement) {
+            processedElements.add(getElementFingerprint(block.parentElement));
+          }
         }
       });
 
-      // Only look for additional unmarked package-like structures if we haven't found any explicit ones
-      if (foundPackages.length === 0) {
-        // Find horizontal scroll containers that might be package blocks
-        const horizontalScrollContainers = doc.querySelectorAll(
-          'div[style*="overflow-x: auto"][style*="white-space: nowrap"]'
+      // Find horizontal scroll containers that might be package blocks
+      const horizontalScrollContainers = doc.querySelectorAll(
+        'div[style*="overflow-x: auto"][style*="white-space: nowrap"]'
+      );
+
+      horizontalScrollContainers.forEach((container, index) => {
+        const fingerprint = getElementFingerprint(container);
+
+        // Skip if we've already processed this container
+        if (processedElements.has(fingerprint)) {
+          return;
+        }
+
+        // Check if this container is a child of an already processed element
+        let parent = container.parentElement;
+        let isChildOfProcessed = false;
+        while (parent) {
+          if (processedElements.has(getElementFingerprint(parent))) {
+            isChildOfProcessed = true;
+            break;
+          }
+          parent = parent.parentElement;
+        }
+
+        if (isChildOfProcessed) {
+          return;
+        }
+
+        // Check if this container has card-like elements with titles that could be packages
+        const cardElements = container.querySelectorAll(
+          'div[style*="border-radius"][style*="overflow: hidden"]'
         );
 
-        horizontalScrollContainers.forEach((container, index) => {
-          // Check if this container has card-like elements with titles that could be packages
-          const cardElements = container.querySelectorAll(
-            'div[style*="border-radius"][style*="overflow: hidden"]'
-          );
+        if (cardElements.length > 0) {
+          processedElements.add(fingerprint);
 
-          if (cardElements.length > 0) {
-            // Create a unique identifier for this container
-            const containerContent = container.innerHTML.substring(0, 50);
-            const containerId = `cont-${containerContent.length}-${index}`;
-
-            if (!processedElements.has(containerId)) {
-              processedElements.add(containerId);
-              // This looks like a package display
-              foundPackages.push({
-                id: `pkg-container-${index}`,
-                element: container as HTMLElement,
-              });
-            }
-          }
-        });
-      }
+          // This looks like a package display
+          foundPackages.push({
+            id: `pkg-container-${index}`,
+            element: container as HTMLElement,
+          });
+        }
+      });
 
       console.log(`Identified ${foundPackages.length} unique package blocks`);
       setExistingPackageBlocks(foundPackages);
@@ -1908,28 +2057,49 @@ function EditPostContent() {
       const parser = new DOMParser();
       const doc = parser.parseFromString(htmlContent, "text/html");
 
-      // Find all package blocks using our existing detection logic
-      const packageBlocks = doc.querySelectorAll(
-        '.packages-block, [data-editor-block="package-cards"]'
+      // Use a more selective approach to avoid duplicates
+      // First get explicitly marked packages
+      const packageBlocks = Array.from(
+        doc.querySelectorAll(
+          '.packages-block, [data-editor-block="package-cards"]'
+        )
       );
+
+      // Then get unmarked horizontal scroll containers that look like packages
+      // but exclude any that are descendants of already found package blocks
+      const processedParents = new Set();
+      packageBlocks.forEach((block) => {
+        processedParents.add(block);
+      });
+
       const horizontalScrollContainers = Array.from(
         doc.querySelectorAll(
           'div[style*="overflow-x: auto"][style*="white-space: nowrap"]'
         )
       ).filter((container) => {
+        // Check if this is or is inside an already processed block
+        let current = container;
+        while (current) {
+          if (processedParents.has(current)) {
+            return false;
+          }
+          current = current.parentElement as Element;
+        }
+
+        // Must have card-like elements to be considered a package container
         const cardElements = container.querySelectorAll(
           'div[style*="border-radius"][style*="overflow: hidden"]'
         );
         return cardElements.length > 0;
       });
 
-      // Combine all package blocks
+      // Combine unique package blocks
       const allPackageBlocks = [
-        ...Array.from(packageBlocks),
+        ...packageBlocks,
         ...horizontalScrollContainers,
       ];
       console.log(
-        `Filtering ${allPackageBlocks.length} package blocks from editor content`
+        `Filtering ${allPackageBlocks.length} unique package blocks from editor content`
       );
 
       // Create a document to store the removed packages
@@ -1939,17 +2109,66 @@ function EditPostContent() {
       );
       const packageContainer = packageDoc.getElementById("package-container");
 
-      // Remove each package block and store it
+      // Remove each package block and store it with position information
       allPackageBlocks.forEach((block, index) => {
+        // Get the exact path to this element for precise positioning when restored
+        const path = [];
+        let currentEl = block;
+        let parentEl = block.parentElement;
+
+        // Capture the full path to this element from its parent down to body
+        while (
+          parentEl &&
+          parentEl !== doc.body &&
+          parentEl.nodeName !== "BODY"
+        ) {
+          const siblings = Array.from(parentEl.children);
+          const position = siblings.indexOf(currentEl);
+          path.unshift({ tag: parentEl.nodeName, position });
+          currentEl = parentEl;
+          parentEl = parentEl.parentElement;
+        }
+
+        // Get position in body if direct child
+        if (
+          parentEl &&
+          (parentEl === doc.body || parentEl.nodeName === "BODY")
+        ) {
+          const bodyChildren = Array.from(parentEl.children);
+          const bodyPosition = bodyChildren.indexOf(currentEl);
+          path.unshift({ tag: "BODY", position: bodyPosition });
+        }
+
         // Create a placeholder to mark where the package was
         const placeholder = doc.createElement("div");
         placeholder.className = "package-placeholder";
         placeholder.setAttribute("data-package-index", index.toString());
+
+        // Store detailed path information for exact restoration
+        placeholder.setAttribute("data-path", JSON.stringify(path));
+
+        // Also store simple parent/position for backward compatibility
+        const parentNode = block.parentNode;
+        if (parentNode) {
+          const childNodes = Array.from(parentNode.childNodes);
+          const position = childNodes.indexOf(block);
+          placeholder.setAttribute(
+            "data-parent-signature",
+            parentNode.nodeName
+          );
+          placeholder.setAttribute("data-position", position.toString());
+        }
+
         placeholder.style.display = "none";
 
         // Clone the package block to the storage container
         if (packageContainer) {
-          packageContainer.appendChild(block.cloneNode(true));
+          const packageWrapper = packageDoc.createElement("div");
+          packageWrapper.className = "package-wrapper";
+          packageWrapper.setAttribute("data-package-index", index.toString());
+          packageWrapper.setAttribute("data-path", JSON.stringify(path));
+          packageWrapper.appendChild(block.cloneNode(true));
+          packageContainer.appendChild(packageWrapper);
         }
 
         // Replace the package block with the placeholder
@@ -1986,20 +2205,141 @@ function EditPostContent() {
       );
 
       // Get all the stored package blocks
-      const packageBlocks = packageDoc.body.children;
+      const packageWrappers = packageDoc.querySelectorAll(".package-wrapper");
+      console.log(`Found ${packageWrappers.length} package blocks to restore`);
 
-      // Replace each placeholder with the corresponding package block
-      placeholders.forEach((placeholder) => {
-        const index = parseInt(
-          placeholder.getAttribute("data-package-index") || "0"
-        );
-        if (index < packageBlocks.length) {
-          placeholder.parentNode?.replaceChild(
-            packageBlocks[index].cloneNode(true),
-            placeholder
-          );
+      // Map packages by their index for easy access
+      const packageMap = new Map();
+      packageWrappers.forEach((wrapper) => {
+        const index = wrapper.getAttribute("data-package-index");
+        if (index) {
+          // Get the actual package inside the wrapper
+          const packageContent = wrapper.firstElementChild;
+          if (packageContent) {
+            packageMap.set(index, {
+              element: packageContent,
+              path: wrapper.getAttribute("data-path"),
+            });
+          }
         }
       });
+
+      // Track if any packages were successfully restored at their placeholders
+      let packagesRestoredAtPlaceholders = false;
+
+      // If we found placeholders, replace them with the corresponding package blocks
+      if (placeholders.length > 0) {
+        placeholders.forEach((placeholder) => {
+          const index = placeholder.getAttribute("data-package-index") || "0";
+          const packageData = packageMap.get(index);
+
+          if (packageData && packageData.element) {
+            placeholder.parentNode?.replaceChild(
+              packageData.element.cloneNode(true),
+              placeholder
+            );
+            packagesRestoredAtPlaceholders = true;
+          }
+        });
+      }
+
+      // If no placeholders were found or some packages couldn't be matched to placeholders,
+      // try to restore them at their original position using path information
+      if (
+        !packagesRestoredAtPlaceholders ||
+        packageWrappers.length > placeholders.length
+      ) {
+        const restoredIndices = new Set();
+
+        // Go through each package and try to place it at its original location
+        packageWrappers.forEach((wrapper) => {
+          const index = wrapper.getAttribute("data-package-index");
+          if (index && !restoredIndices.has(index)) {
+            const pathData = wrapper.getAttribute("data-path");
+            const packageContent = wrapper.firstElementChild;
+
+            if (pathData && packageContent) {
+              try {
+                const path = JSON.parse(pathData);
+
+                // Start from the document body
+                let currentElement: Element | null = doc.body;
+
+                // Follow the path to find the exact insertion point
+                for (let i = 0; i < path.length && currentElement; i++) {
+                  const pathItem = path[i];
+                  const { tag, position } = pathItem;
+
+                  // Make sure we're at the expected element type
+                  if (currentElement.nodeName === tag) {
+                    // If this is the last step in the path, we insert before the element at position
+                    if (i === path.length - 1) {
+                      const children = Array.from(currentElement.children);
+
+                      if (position < children.length) {
+                        // Insert before the element at the specified position
+                        currentElement.insertBefore(
+                          packageContent.cloneNode(true),
+                          children[position]
+                        );
+                        restoredIndices.add(index);
+                        console.log(
+                          `Restored package at original path position: ${position} in ${tag}`
+                        );
+                      } else {
+                        // Position is beyond current children, append to the end
+                        currentElement.appendChild(
+                          packageContent.cloneNode(true)
+                        );
+                        restoredIndices.add(index);
+                        console.log(
+                          `Appended package to ${tag} as original position ${position} was beyond current children`
+                        );
+                      }
+                    } else {
+                      // Move to the next level in the path
+                      const children = Array.from(
+                        currentElement.children
+                      ) as any;
+                      if (position < children.length) {
+                        currentElement = children[position];
+                      } else {
+                        // Path is invalid, break out
+                        console.warn(
+                          `Path navigation failed: position ${position} does not exist in ${tag}`
+                        );
+                        currentElement = null;
+                      }
+                    }
+                  } else {
+                    console.warn(
+                      `Path navigation failed: expected ${tag} but found ${currentElement.nodeName}`
+                    );
+                    currentElement = null;
+                  }
+                }
+              } catch (pathError) {
+                console.error("Error processing path data:", pathError);
+              }
+            }
+          }
+        });
+
+        // For any packages that couldn't be placed at their original position,
+        // append them to the end of the document
+        packageWrappers.forEach((wrapper) => {
+          const index = wrapper.getAttribute("data-package-index");
+          if (index && !restoredIndices.has(index)) {
+            const packageContent = wrapper.firstElementChild;
+            if (packageContent) {
+              doc.body.appendChild(packageContent.cloneNode(true));
+              console.log(
+                `Appended package with index ${index} to the end as fallback`
+              );
+            }
+          }
+        });
+      }
 
       return doc.body.innerHTML;
     } catch (error) {
@@ -2010,9 +2350,14 @@ function EditPostContent() {
 
   // Add this function to remove a package block from content
   const removePackageBlockFromContent = (packageId: string) => {
-    if (!modalContentRef.current) return;
+    if (!modalContentRef.current) {
+      console.error("Modal content reference is null");
+      return;
+    }
 
     try {
+      console.log(`Attempting to remove package with ID: ${packageId}`);
+
       // Create a new DOM representation of the current content
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = modalContent;
@@ -2066,6 +2411,11 @@ function EditPostContent() {
         setExistingPackageBlocks((prev) =>
           prev.filter((pkg) => pkg.id !== packageId)
         );
+
+        // Rescan the content to ensure accurate package display
+        setTimeout(() => {
+          scanContentForPackages(tempDiv.innerHTML);
+        }, 50);
 
         toast({
           title: "Success",
@@ -2146,16 +2496,18 @@ function EditPostContent() {
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0);
         if (modalContentRef.current.contains(range.commonAncestorContainer)) {
-          // Create HTML for the packages block
+          // Create HTML for the packages block with a unique ID to help track it
+          const uniqueId = `pkg-${Date.now()}`;
+          const insertionTime = Date.now();
           const packagesHtml = `
-            <div class="packages-block" data-editor-block="package-cards" style="position: relative; overflow: hidden; margin: 15px 0;">
+            <div class="packages-block" data-editor-block="package-cards" data-package-id="${uniqueId}" data-insertion-time="${insertionTime}" style="position: relative; overflow: hidden; margin: 15px 0;">
               <button class="editor-only-element" onclick="this.parentElement.remove()" style="position: absolute; top: 5px; right: 5px; background: #ff4d4f; color: white; border: none; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; z-index: 10;">×</button>
               <div style="overflow-x: auto; white-space: nowrap; padding: 10px 0; width: 100%; -webkit-overflow-scrolling: touch;">
                 <div style="display: inline-flex; gap: 16px; padding: 0 4px;">
                   ${packages
                     .map(
                       (pkg) => `
-                  <div style="display: inline-block; vertical-align: top; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); width: 280px; background: white;">
+                  <div style="display: inline-block; vertical-align: top; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.08); width: 280px; background: white;" data-package-item-id="${pkg.id}">
                     <div style="height: 180px; overflow: hidden; position: relative; background-color: #f3f4f6;">
                       <img src="/images/package.svg" alt="${
                         pkg.name
@@ -2207,6 +2559,13 @@ function EditPostContent() {
           // Get the updated content from the contentEditable div
           setModalContent(modalContentRef.current.innerHTML);
 
+          // Update the package blocks - scan for existing packages
+          setTimeout(() => {
+            if (modalContentRef.current) {
+              scanContentForPackages(modalContentRef.current.innerHTML);
+            }
+          }, 50);
+
           toast({
             title: "Success",
             description: "Package block inserted at cursor position",
@@ -2221,8 +2580,16 @@ function EditPostContent() {
     let contentWithPackages = content;
 
     try {
-      contentWithPackages = restorePackagesToContent(content);
-      console.log("Restored packages for modal editing");
+      // First make sure we have the latest hidden packages
+      if (hiddenPackages) {
+        console.log(
+          "Restoring packages for modal editing, size:",
+          hiddenPackages.length
+        );
+        contentWithPackages = restorePackagesToContent(content);
+      } else {
+        console.log("No hidden packages found to restore for modal");
+      }
     } catch (error) {
       console.error("Error restoring packages for modal:", error);
     }
@@ -2240,13 +2607,57 @@ function EditPostContent() {
     // Clean up editor-only elements before saving
     const cleanedContent = cleanEditorElements(modalContent);
 
+    console.log("Saving modal content and processing packages");
+
     // Filter out packages again before updating the main editor
     const { filteredContent, packageContent } =
       filterPackagesFromContent(cleanedContent);
 
     // Update the hidden packages if we found any
     if (packageContent) {
+      console.log(
+        "Packages found in modal content, saving for later restoration:",
+        packageContent.length,
+        "bytes"
+      );
       setHiddenPackages(packageContent);
+
+      // Log the number of packages found for debugging
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(packageContent, "text/html");
+        const packageWrappers = doc.querySelectorAll(".package-wrapper");
+        console.log(`Found ${packageWrappers.length} package wrappers to save`);
+
+        // Examine path data for each package to ensure location information is preserved
+        packageWrappers.forEach((wrapper, idx) => {
+          const pathData = wrapper.getAttribute("data-path");
+          if (pathData) {
+            try {
+              const path = JSON.parse(pathData);
+              console.log(
+                `Package #${idx} has location path with ${path.length} steps`
+              );
+            } catch (e) {
+              console.warn(`Invalid path data for package #${idx}`);
+            }
+          } else {
+            console.warn(`Package #${idx} does not have path data`);
+          }
+        });
+      } catch (error) {
+        console.error("Error parsing package content:", error);
+      }
+    } else {
+      console.log("No packages found in modal content");
+      // If we had packages before but now have none, preserve the state to allow restoration
+      if (hiddenPackages) {
+        console.log(
+          "Maintaining previous package state since no new packages were found"
+        );
+      } else {
+        setHiddenPackages("");
+      }
     }
 
     // Update the main editor content with the cleaned, filtered content
@@ -2413,139 +2824,53 @@ function EditPostContent() {
               <div className="flex items-center gap-4">
                 <Button
                   type="button"
-                  id="featureImageUploadBtn"
-                  onClick={() => fileInputRef.current?.click()}
+                  onClick={() =>
+                    document.getElementById("feature-image-upload")?.click()
+                  }
                   variant="outline"
                 >
                   Upload Image
                 </Button>
-                <input
+                <Input
+                  id="feature-image-upload"
                   type="file"
-                  id="featureImage"
-                  ref={fileInputRef}
-                  onChange={handleFeatureImageUpload}
                   accept="image/*"
                   className="hidden"
+                  onChange={handleFeatureImageUpload}
                 />
                 {featureImage && (
-                  <span className="text-sm text-muted-foreground">
-                    Image uploaded
-                  </span>
-                )}
-              </div>
-
-              {featureImage && (
-                <div className="mt-4 space-y-4">
-                  <div className="relative aspect-video w-full max-w-md overflow-hidden rounded-lg border">
-                    <Image
+                  <div className="flex items-center gap-2">
+                    <img
                       src={featureImage}
                       alt={featureImageAlt}
-                      className="object-cover"
-                      fill
+                      className="w-12 h-12 object-cover rounded"
                     />
+                    <Button
+                      type="button"
+                      onClick={() => setFeatureImage("")}
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="featureImageAlt">Image Alt Text</Label>
-                    <Input
-                      id="featureImageAlt"
-                      value={featureImageAlt}
-                      onChange={(e) => setFeatureImageAlt(e.target.value)}
-                      placeholder="Describe the image for accessibility"
-                    />
-                  </div>
+                )}
+              </div>
+              {featureImage && (
+                <div className="space-y-2 mt-2">
+                  <Label htmlFor="featureImageAlt">
+                    Feature Image Alt Text
+                  </Label>
+                  <Input
+                    id="featureImageAlt"
+                    value={featureImageAlt}
+                    onChange={(e) => setFeatureImageAlt(e.target.value)}
+                    placeholder="Describe the image for accessibility"
+                  />
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Packages Section - MOVED HERE */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Holiday Packages</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter package ID"
-                value={packageInput}
-                onChange={(e) => setPackageInput(e.target.value)}
-              />
-              <Button
-                type="button"
-                onClick={addPackage}
-                disabled={isLoadingPackages}
-              >
-                {isLoadingPackages ? "Loading..." : "Add Package"}
-              </Button>
-            </div>
-
-            {packageIds.length > 0 && (
-              <>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {packageIds.map((id) => (
-                    <div
-                      key={id}
-                      className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full"
-                    >
-                      <span>{id}</span>
-                      <button
-                        type="button"
-                        onClick={() => removePackage(id)}
-                        className="text-muted-foreground hover:text-destructive"
-                      >
-                        <span className="sr-only">Remove</span>×
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {packages.length > 0 && (
-                  <>
-                    <div className="mt-6 overflow-x-auto pb-4">
-                      <div className="flex gap-4">
-                        {packages.map((pkg) => (
-                          <div
-                            key={pkg.id}
-                            className="flex-none w-[280px] rounded-xl overflow-hidden shadow-md bg-white"
-                          >
-                            <div className="h-[180px] bg-gray-100 relative">
-                              <img
-                                src="/images/package.svg"
-                                alt={pkg.name}
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="p-4">
-                              <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                                {pkg.name}
-                              </h3>
-                              <div className="flex flex-wrap gap-1 text-xs text-gray-500 mb-2">
-                                <span>Resorts</span>
-                                <span>•</span>
-                                <span>Clubs</span>
-                                <span>•</span>
-                                <span>Beach</span>
-                              </div>
-                              <div className="text-sm text-gray-500 mb-3">
-                                Weekend getaway
-                              </div>
-                              <div className="font-semibold">
-                                From ₹
-                                {pkg.starting_price
-                                  ? pkg.starting_price.toLocaleString()
-                                  : "29,000"}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
           </CardContent>
         </Card>
 
@@ -2582,55 +2907,97 @@ function EditPostContent() {
             <CardTitle>Most Read Blogs</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Select
-                value={selectedBlogId}
-                onValueChange={setSelectedBlogId}
-                disabled={isLoadingBlogs}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a blog to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableBlogs.length > 0 ? (
-                    availableBlogs.map((blog) => (
-                      <SelectItem key={blog.id} value={blog.id || ""}>
-                        {blog.id || "No ID"}
-                      </SelectItem>
-                    ))
-                  ) : (
-                    <SelectItem value="no-blogs" disabled>
-                      {isLoadingBlogs
-                        ? "Loading blogs..."
-                        : "No blogs available"}
-                    </SelectItem>
-                  )}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                onClick={addRelatedBlog}
-                disabled={isLoadingBlogs || !selectedBlogId}
-              >
-                Add Blog
-              </Button>
+            <div className="relative" ref={blogSearchRef}>
+              <div className="flex items-center border rounded-md px-3 py-2 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+                <Search className="h-4 w-4 mr-2 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search blogs by ID or title..."
+                  value={blogSearchTerm}
+                  onChange={(e) => handleBlogSearch(e.target.value)}
+                  className="flex-1 border-0 bg-transparent p-0 text-sm focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={isLoadingBlogs}
+                />
+                {blogSearchTerm && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 w-5 p-0 rounded-full"
+                    onClick={() => {
+                      setBlogSearchTerm("");
+                      setBlogSearchResults([]);
+                      setShowBlogSearchResults(false);
+                    }}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+
+              {showBlogSearchResults && blogSearchResults.length > 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-popover rounded-md border shadow-md max-h-56 overflow-auto">
+                  <ul className="py-1">
+                    {blogSearchResults.map((blog) => (
+                      <li
+                        key={blog.id}
+                        className="px-2 py-1.5 text-sm hover:bg-muted cursor-pointer"
+                        onClick={() => selectBlogFromSearch(blog)}
+                      >
+                        <div className="font-medium">
+                          {blog.title || "Untitled"}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          ID: {blog.id}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
-            {relatedBlogIds.length > 0 ? (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {relatedBlogIds.map((id) => (
+            {selectedBlogDetails.length > 0 ? (
+              <div className="grid grid-cols-1 gap-4 mt-4">
+                {selectedBlogDetails.map((blog) => (
                   <div
-                    key={id}
-                    className="flex items-center gap-1 bg-muted px-3 py-1 rounded-full"
+                    key={blog.id}
+                    className="relative flex border rounded-md overflow-hidden"
                   >
-                    <span>{id}</span>
-                    <button
+                    {blog.featureImage && (
+                      <div className="w-24 h-auto bg-muted relative">
+                        <Image
+                          src={blog.featureImage}
+                          alt={
+                            blog.featureImageAlt || blog.title || "Blog image"
+                          }
+                          className="object-cover"
+                          fill
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 p-3 pl-4">
+                      <div className="font-medium line-clamp-1">
+                        {blog.title || "Untitled"}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        ID: {blog.id}
+                      </div>
+                      {blog.excerpt && (
+                        <p className="text-sm mt-1 line-clamp-2">
+                          {blog.excerpt}
+                        </p>
+                      )}
+                    </div>
+                    <Button
                       type="button"
-                      onClick={() => removeRelatedBlog(id)}
-                      className="text-muted-foreground hover:text-destructive"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute top-2 right-2 h-6 w-6 p-0 rounded-full bg-background/80 hover:bg-background"
+                      onClick={() => removeRelatedBlog(blog.id)}
                     >
-                      <span className="sr-only">Remove</span>×
-                    </button>
+                      <X className="h-3 w-3" />
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -2841,26 +3208,6 @@ function EditPostContent() {
                               {isLoadingPackages ? "..." : "Add"}
                             </Button>
                           </div>
-
-                          {packageIds.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {packageIds.map((id) => (
-                                <div
-                                  key={id}
-                                  className="flex items-center gap-1 bg-muted px-2 py-1 rounded-full text-xs"
-                                >
-                                  <span>{id}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => removePackage(id)}
-                                    className="text-muted-foreground hover:text-destructive"
-                                  >
-                                    <span className="sr-only">Remove</span>×
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          )}
 
                           {packages.length > 0 && (
                             <div className="mt-2">
