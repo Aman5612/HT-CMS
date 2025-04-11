@@ -294,7 +294,7 @@ const CardBlock = Node.create({
         ({ commands, editor }: { commands: any; editor: any }) => {
           // Fetch package data
           fetch(
-            `https://staging.holidaytribe.com:3000/package/getPackageByIds/${packageId}`
+            `https://holidaytribe.com:3000/package/getPackageByIds/${packageId}`
           )
             .then((response) => response.json())
             .then((data) => {

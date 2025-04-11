@@ -1044,7 +1044,7 @@ function EditPostContent() {
       // Try a direct fetch first
       try {
         const response = await fetch(
-          `https://staging.holidaytribe.com:3000/package/getPackageByIds/${packageId}`
+          `https://holidaytribe.com:3000/package/getPackageByIds/${packageId}`
         );
 
         if (response.ok) {
