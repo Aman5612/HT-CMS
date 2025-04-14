@@ -11,24 +11,24 @@ export default withAuth(
       console.log("Access denied: Account is inactive");
       
       // If trying to access any protected route and account is inactive
-      if (pathname.startsWith("/dashboard")) {
+      if (pathname.startsWith("/blog-cms/dashboard")) {
         return NextResponse.redirect(
-          new URL("/account-inactive", req.url)
+          new URL("/blog-cms/account-inactive", req.url)
         );
       }
     }
     
     // Admin-only routes
     const adminOnlyRoutes = [
-      "/dashboard/users",
-      "/dashboard/settings/site",
+      "/blog-cms/dashboard/users",
+      "/blog-cms/dashboard/settings/site",
     ];
     
     // Editor and admin routes (content management)
     const editorRoutes = [
-      "/dashboard/posts/new",
-      "/dashboard/posts/edit",
-      "/dashboard/media",
+      "/blog-cms/dashboard/posts/new",
+      "/blog-cms/dashboard/posts/edit",
+      "/blog-cms/dashboard/media",
     ];
     
     // Check if path is admin-only
@@ -47,13 +47,13 @@ export default withAuth(
     // If trying to access admin routes without being an admin, redirect to dashboard
     if (isAdminRoute && userRole !== "admin") {
       console.log("Access denied: Admin route accessed by", userRole);
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/blog-cms/dashboard", req.url));
     }
     
     // If trying to access editor routes without sufficient permissions
     if (isEditorRoute && userRole === "author") {
       console.log("Access denied: Editor route accessed by author");
-      return NextResponse.redirect(new URL("/dashboard", req.url));
+      return NextResponse.redirect(new URL("/blog-cms/dashboard", req.url));
     }
     
     // Allow the request to proceed
@@ -67,4 +67,4 @@ export default withAuth(
 );
 
 // Protect all dashboard routes
-export const config = { matcher: ["/dashboard/:path*"] };
+export const config = { matcher: ["/blog-cms/dashboard/:path*"] };

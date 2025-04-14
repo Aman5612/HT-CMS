@@ -105,7 +105,7 @@ function DashboardContent() {
     const fetchAnalytics = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch("/api/analytics");
+        const response = await fetch("/blog-cms/api/analytics");
 
         if (!response.ok) {
           throw new Error("Failed to fetch analytics data");

@@ -1037,7 +1037,7 @@ const CustomImage = Image.extend({
     formData.append("file", file);
     formData.append("type", "image");
 
-    const response = await fetch("/api/upload", {
+    const response = await fetch("/blog-cms/api/upload", {
       method: "POST",
       body: formData,
     });
@@ -1181,7 +1181,7 @@ export const extensions = [
       formData.append("file", file);
       formData.append("type", "video");
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/blog-cms/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -1224,7 +1224,7 @@ export const extensions = [
       formData.append("file", file);
       formData.append("type", "attachment");
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/blog-cms/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -1240,7 +1240,7 @@ export const extensions = [
       formData.append("file", file);
       formData.append("type", "mermaid");
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/blog-cms/api/upload", {
         method: "POST",
         body: formData,
       });

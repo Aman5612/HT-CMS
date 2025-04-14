@@ -5,7 +5,14 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Mail, Lock, User, AlertCircle, CheckCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -29,9 +36,9 @@ export default function JoinPage({ params }: { params: { token: string } }) {
     const validateToken = async () => {
       try {
         setValidating(true);
-        const response = await fetch(`/api/invitations/${token}`);
+        const response = await fetch(`/blog-cms/api/invitations/${token}`);
         const data = await response.json();
-        
+
         if (data.valid) {
           setIsValid(true);
           setEmail(data.email);
@@ -52,7 +59,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validate form
     if (!name.trim()) {
       toast({
@@ -62,7 +69,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
       });
       return;
     }
-    
+
     if (password.length < 8) {
       toast({
         title: "Error",
@@ -71,7 +78,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
       });
       return;
     }
-    
+
     if (password !== confirmPassword) {
       toast({
         title: "Error",
@@ -80,12 +87,12 @@ export default function JoinPage({ params }: { params: { token: string } }) {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
     setError("");
-    
+
     try {
-      const response = await fetch(`/api/invitations/${token}`, {
+      const response = await fetch(`/blog-cms/api/invitations/${token}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -95,14 +102,14 @@ export default function JoinPage({ params }: { params: { token: string } }) {
           password,
         }),
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to create account");
       }
-      
+
       setSuccess(true);
-      
+
       // Redirect to login after a delay
       setTimeout(() => {
         router.push("/login");
@@ -143,7 +150,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Invalid Invitation</CardTitle>
             <CardDescription>
-              We couldn't validate your invitation link.
+              We couldn&apos;t validate your invitation link.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -154,10 +161,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
             </Alert>
           </CardContent>
           <CardFooter>
-            <Button
-              className="w-full"
-              onClick={() => router.push("/login")}
-            >
+            <Button className="w-full" onClick={() => router.push("/login")}>
               Go to Login
             </Button>
           </CardFooter>
@@ -181,7 +185,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
               <CheckCircle className="h-4 w-4" />
               <AlertTitle>Success</AlertTitle>
               <AlertDescription>
-                You'll be redirected to the login page in a moment.
+                You&apos;ll be redirected to the login page in a moment.
               </AlertDescription>
             </Alert>
           </CardContent>
@@ -196,7 +200,8 @@ export default function JoinPage({ params }: { params: { token: string } }) {
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>
-            You've been invited to join the CMS. Set up your account to continue.
+            You&apos;ve been invited to join the CMS. Set up your account to
+            continue.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -207,7 +212,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -216,7 +221,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
                 <span>{email}</span>
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -231,7 +236,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
                 />
               </div>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
@@ -251,7 +256,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
                 Password must be at least 8 characters long
               </p>
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="confirm-password">Confirm Password</Label>
               <div className="relative">
@@ -267,12 +272,8 @@ export default function JoinPage({ params }: { params: { token: string } }) {
                 />
               </div>
             </div>
-            
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isSubmitting}
-            >
+
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? "Creating Account..." : "Create Account"}
             </Button>
           </form>
@@ -280,4 +281,4 @@ export default function JoinPage({ params }: { params: { token: string } }) {
       </Card>
     </div>
   );
-} 
+}

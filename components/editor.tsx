@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
-import RichTextEditor from 'reactjs-tiptap-editor';
-import { locale } from 'reactjs-tiptap-editor/locale-bundle';
+import { useCallback, useState } from "react";
+import RichTextEditor from "reactjs-tiptap-editor";
+import { locale } from "reactjs-tiptap-editor/locale-bundle";
 import {
   Attachment,
   BaseKit,
@@ -47,13 +47,13 @@ import {
   Twitter,
   Underline,
   Video,
-} from 'reactjs-tiptap-editor/extension-bundle';
-import 'reactjs-tiptap-editor/style.css';
-import 'katex/dist/katex.min.css';
+} from "reactjs-tiptap-editor/extension-bundle";
+import "reactjs-tiptap-editor/style.css";
+import "katex/dist/katex.min.css";
 
 // Function to convert base64 to Blob (unchanged)
 function convertBase64ToBlob(base64: string) {
-  const arr = base64.split(',');
+  const arr = base64.split(",");
   const mime = arr[0].match(/:(.*?);/)![1];
   const bstr = atob(arr[1]);
   let n = bstr.length;
@@ -90,7 +90,7 @@ export const extensions = [
   Highlight,
   BulletList,
   OrderedList,
-  TextAlign.configure({ types: ['heading', 'paragraph'], spacer: true }),
+  TextAlign.configure({ types: ["heading", "paragraph"], spacer: true }),
   Indent,
   LineHeight,
   TaskList.configure({
@@ -103,14 +103,14 @@ export const extensions = [
   Image.configure({
     upload: async (file: File) => {
       const formData = new FormData();
-      formData.append('file', file);
-  
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      formData.append("file", file);
+
+      const response = await fetch("/blog-cms/api/upload", {
+        method: "POST",
         body: formData,
       });
-  
-      if (!response.ok) throw new Error('Upload failed');
+
+      if (!response.ok) throw new Error("Upload failed");
       const { url } = await response.json();
       return url; // e.g., "https://your-storage.com/images/file.jpg"
     },
@@ -118,16 +118,16 @@ export const extensions = [
   Video.configure({
     upload: async (file: File) => {
       const formData = new FormData();
-      formData.append('file', file);
-  
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      formData.append("file", file);
+
+      const response = await fetch("/blog-cms/api/upload", {
+        method: "POST",
         body: formData,
       });
-  
-      if (!response.ok) throw new Error('Upload failed');
+
+      if (!response.ok) throw new Error("Upload failed");
       const { url } = await response.json();
-      return url; 
+      return url;
     },
   }),
   ImageGif.configure({
@@ -139,7 +139,7 @@ export const extensions = [
   Code.configure({
     toolbar: false,
   }),
-  CodeBlock.configure({ defaultTheme: 'dracula' }),
+  CodeBlock.configure({ defaultTheme: "dracula" }),
   ColumnActionButton,
   Table,
   Iframe,
@@ -198,14 +198,14 @@ function debounce(func: any, wait: number) {
 
 function Editor() {
   const [content, setContent] = useState(DEFAULT);
-  const [theme, setTheme] = useState('light');
+  const [theme, setTheme] = useState("light");
   const [disable, setDisable] = useState(false);
 
   const onValueChange = useCallback(
     debounce((value: any) => {
       setContent(value);
     }, 300),
-    [],
+    []
   );
 
   return (
@@ -213,7 +213,7 @@ function Editor() {
       className="p-0 flex flex-col w-full max-w-screen-lg gap-[24px] mx-4 my-0"
       style={{
         maxWidth: 1024,
-        margin: '40px auto',
+        margin: "40px auto",
       }}
     >
       <RichTextEditor
@@ -221,11 +221,11 @@ function Editor() {
         content={content as any}
         onChangeContent={onValueChange}
         extensions={extensions}
-        dark={theme === 'dark'}
+        dark={theme === "dark"}
         disabled={disable}
       />
 
-      {typeof content === 'string' && (
+      {typeof content === "string" && (
         <textarea
           style={{
             marginTop: 20,
@@ -239,5 +239,4 @@ function Editor() {
   );
 }
 
-export default Editor; 
-
+export default Editor;

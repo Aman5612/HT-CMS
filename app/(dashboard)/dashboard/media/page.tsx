@@ -1,11 +1,17 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Upload, Image as ImageIcon, Trash2, ExternalLink } from 'lucide-react';
-import Image from 'next/image';
-import { useToast } from '@/hooks/use-toast';
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Upload, Image as ImageIcon, Trash2, ExternalLink } from "lucide-react";
+import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +40,7 @@ export default function MediaPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
-  const [editAltText, setEditAltText] = useState('');
+  const [editAltText, setEditAltText] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -44,16 +50,16 @@ export default function MediaPage() {
   const fetchMedia = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/media');
-      if (!response.ok) throw new Error('Failed to fetch media');
+      const response = await fetch("/blog-cms/api/media");
+      if (!response.ok) throw new Error("Failed to fetch media");
       const data = await response.json();
       setMediaItems(data);
     } catch (error) {
-      console.error('Error fetching media:', error);
+      console.error("Error fetching media:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to load media items',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to load media items",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -68,57 +74,58 @@ export default function MediaPage() {
 
   const handleUpload = async () => {
     if (!selectedFile) return;
-    
+
     try {
       setUploading(true);
-      
+
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('type', 'image');
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
+      formData.append("file", selectedFile);
+      formData.append("type", "image");
+
+      const response = await fetch("/blog-cms/api/upload", {
+        method: "POST",
         body: formData,
       });
-      
-      if (!response.ok) throw new Error('Upload failed');
-      
+
+      if (!response.ok) throw new Error("Upload failed");
+
       const { url } = await response.json();
-      
+
       // Save to the media collection
-      const mediaResponse = await fetch('/api/media', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const mediaResponse = await fetch("/blog-cms/api/media", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           url,
-          type: 'image',
+          type: "image",
           alt: selectedFile.name,
         }),
       });
-      
-      if (!mediaResponse.ok) throw new Error('Failed to save media');
-      
+
+      if (!mediaResponse.ok) throw new Error("Failed to save media");
+
       toast({
-        title: 'Success',
-        description: 'Media uploaded successfully',
+        title: "Success",
+        description: "Media uploaded successfully",
       });
-      
+
       // Refresh the media list
       fetchMedia();
-      
     } catch (error) {
-      console.error('Error uploading media:', error);
+      console.error("Error uploading media:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to upload media',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to upload media",
+        variant: "destructive",
       });
     } finally {
       setUploading(false);
       setSelectedFile(null);
       // Reset the file input
-      const fileInput = document.getElementById('file-upload') as HTMLInputElement;
-      if (fileInput) fileInput.value = '';
+      const fileInput = document.getElementById(
+        "file-upload"
+      ) as HTMLInputElement;
+      if (fileInput) fileInput.value = "";
     }
   };
 
@@ -129,71 +136,71 @@ export default function MediaPage() {
 
   const handleDelete = async () => {
     if (!selectedMedia) return;
-    
+
     try {
-      const response = await fetch(`/api/media/${selectedMedia.id}`, {
-        method: 'DELETE',
+      const response = await fetch(`/blog-cms/api/media/${selectedMedia.id}`, {
+        method: "DELETE",
       });
-      
-      if (!response.ok) throw new Error('Failed to delete media');
-      
+
+      if (!response.ok) throw new Error("Failed to delete media");
+
       toast({
-        title: 'Success',
-        description: 'Media deleted successfully',
+        title: "Success",
+        description: "Media deleted successfully",
       });
-      
+
       // Remove from local state
-      setMediaItems(prevItems => prevItems.filter(item => item.id !== selectedMedia.id));
+      setMediaItems((prevItems) =>
+        prevItems.filter((item) => item.id !== selectedMedia.id)
+      );
       setDeleteDialogOpen(false);
-      
     } catch (error) {
-      console.error('Error deleting media:', error);
+      console.error("Error deleting media:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to delete media',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to delete media",
+        variant: "destructive",
       });
     }
   };
 
   const openEditDialog = (media: MediaItem) => {
     setSelectedMedia(media);
-    setEditAltText(media.alt || '');
+    setEditAltText(media.alt || "");
     setEditDialogOpen(true);
   };
 
   const handleUpdateAlt = async () => {
     if (!selectedMedia) return;
-    
+
     try {
-      const response = await fetch(`/api/media/${selectedMedia.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`/blog-cms/api/media/${selectedMedia.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ alt: editAltText }),
       });
-      
-      if (!response.ok) throw new Error('Failed to update media');
-      
+
+      if (!response.ok) throw new Error("Failed to update media");
+
       toast({
-        title: 'Success',
-        description: 'Alt text updated successfully',
+        title: "Success",
+        description: "Alt text updated successfully",
       });
-      
+
       // Update in local state
-      setMediaItems(prevItems => 
-        prevItems.map(item => 
+      setMediaItems((prevItems) =>
+        prevItems.map((item) =>
           item.id === selectedMedia.id ? { ...item, alt: editAltText } : item
         )
       );
-      
+
       setEditDialogOpen(false);
-      
     } catch (error) {
-      console.error('Error updating media:', error);
+      console.error("Error updating media:", error);
       toast({
-        title: 'Error',
-        description: 'Failed to update alt text',
-        variant: 'destructive',
+        title: "Error",
+        description: "Failed to update alt text",
+        variant: "destructive",
       });
     }
   };
@@ -205,7 +212,7 @@ export default function MediaPage() {
         <div className="flex items-center gap-3">
           {selectedFile && (
             <Button onClick={handleUpload} disabled={uploading}>
-              {uploading ? 'Uploading...' : 'Upload Selected File'}
+              {uploading ? "Uploading..." : "Upload Selected File"}
             </Button>
           )}
           <input
@@ -239,42 +246,49 @@ export default function MediaPage() {
       ) : mediaItems.length === 0 ? (
         <div className="bg-muted p-6 rounded-md text-center">
           <p className="text-muted-foreground mb-2">No media items found</p>
-          <p className="text-sm text-muted-foreground">Upload media to see it here</p>
+          <p className="text-sm text-muted-foreground">
+            Upload media to see it here
+          </p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-3 lg:grid-cols-4">
           {mediaItems.map((media) => (
             <Card key={media.id} className="overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 p-3">
-                <CardTitle className="text-sm font-medium truncate" title={media.alt || ''}>
-                  {media.alt || 'No alt text'}
+                <CardTitle
+                  className="text-sm font-medium truncate"
+                  title={media.alt || ""}
+                >
+                  {media.alt || "No alt text"}
                 </CardTitle>
                 <div className="flex items-center gap-1">
-                  {media.type === 'image' ? (
+                  {media.type === "image" ? (
                     <ImageIcon className="h-4 w-4 text-muted-foreground" />
                   ) : (
                     <div className="rounded bg-primary h-4 w-4 flex items-center justify-center">
-                      <span className="text-[8px] text-white font-bold">VID</span>
+                      <span className="text-[8px] text-white font-bold">
+                        VID
+                      </span>
                     </div>
                   )}
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="relative aspect-video bg-muted">
-                  {media.type === 'image' ? (
+                  {media.type === "image" ? (
                     <div className="relative h-full w-full">
-                      <Image 
-                        src={media.url} 
-                        alt={media.alt || 'Media item'} 
+                      <Image
+                        src={media.url}
+                        alt={media.alt || "Media item"}
                         fill
                         className="object-cover"
                       />
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full">
-                      <video 
-                        src={media.url} 
-                        controls 
+                      <video
+                        src={media.url}
+                        controls
                         className="max-h-full max-w-full"
                       />
                     </div>
@@ -282,25 +296,25 @@ export default function MediaPage() {
                 </div>
               </CardContent>
               <CardFooter className="p-2 flex justify-between gap-2">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => openEditDialog(media)}
                   title="Edit alt text"
                 >
                   <ImageIcon className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="icon"
-                  onClick={() => window.open(media.url, '_blank')}
+                  onClick={() => window.open(media.url, "_blank")}
                   title="Open in new tab"
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => confirmDelete(media)}
                   className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                   title="Delete"
@@ -319,15 +333,16 @@ export default function MediaPage() {
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this media item? This action cannot be undone.
+              Are you sure you want to delete this media item? This action
+              cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="my-2">
-            {selectedMedia && selectedMedia.type === 'image' && (
+            {selectedMedia && selectedMedia.type === "image" && (
               <div className="relative h-40 w-full rounded overflow-hidden">
                 <Image
                   src={selectedMedia.url}
-                  alt={selectedMedia.alt || 'Media to delete'}
+                  alt={selectedMedia.alt || "Media to delete"}
                   fill
                   className="object-contain"
                 />
@@ -335,7 +350,10 @@ export default function MediaPage() {
             )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+            >
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDelete}>
@@ -351,15 +369,15 @@ export default function MediaPage() {
           <DialogHeader>
             <DialogTitle>Edit Alt Text</DialogTitle>
             <DialogDescription>
-              Alt text helps describe images to users who can't see them.
+              Alt text helps describe images to users who can&apos;t see them.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            {selectedMedia && selectedMedia.type === 'image' && (
+            {selectedMedia && selectedMedia.type === "image" && (
               <div className="relative h-40 w-full rounded overflow-hidden">
                 <Image
                   src={selectedMedia.url}
-                  alt={selectedMedia.alt || 'Media to edit'}
+                  alt={selectedMedia.alt || "Media to edit"}
                   fill
                   className="object-contain"
                 />
@@ -379,9 +397,7 @@ export default function MediaPage() {
             <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdateAlt}>
-              Save Changes
-            </Button>
+            <Button onClick={handleUpdateAlt}>Save Changes</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

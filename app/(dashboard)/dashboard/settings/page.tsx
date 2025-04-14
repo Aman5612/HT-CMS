@@ -1,18 +1,32 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Settings as SettingsIcon, Save, User, Lock, Bell, Eye, EyeOff } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { RoleGate } from '@/components/role-gate';
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import {
+  Settings as SettingsIcon,
+  Save,
+  User,
+  Lock,
+  Bell,
+  Eye,
+  EyeOff,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RoleGate } from "@/components/role-gate";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,27 +38,27 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Badge } from '@/components/ui/badge';
+import { Badge } from "@/components/ui/badge";
 
 function UserSettingsContent() {
   const { data: session, update: updateSession, status } = useSession();
   const { toast } = useToast();
-  
+
   // Profile settings
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [role, setRole] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("");
   const [isActive, setIsActive] = useState(true);
-  
+
   // Password change
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
+
   // Notification preferences
   const [emailNotifications, setEmailNotifications] = useState(true);
-  
+
   // Loading states
   const [isLoading, setIsLoading] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -52,17 +66,19 @@ function UserSettingsContent() {
   // Fetch user data when session is available
   useEffect(() => {
     if (session?.user) {
-      setName(session.user.name || '');
-      setEmail(session.user.email || '');
-      setRole(session.user.role || 'author');
-      setIsActive(session.user.isActive !== undefined ? session.user.isActive : true);
+      setName(session.user.name || "");
+      setEmail(session.user.email || "");
+      setRole(session.user.role || "author");
+      setIsActive(
+        session.user.isActive !== undefined ? session.user.isActive : true
+      );
     }
   }, [session]);
 
   // Handle profile update
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!session?.user?.id) {
       toast({
         title: "Error",
@@ -71,28 +87,28 @@ function UserSettingsContent() {
       });
       return;
     }
-    
+
     setIsLoading(true);
-    
+
     try {
-      const response = await fetch(`/api/users/${session.user.id}`, {
+      const response = await fetch(`/blog-cms/api/users/${session.user.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name
+          name,
         }),
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to update profile");
       }
-      
+
       // Update session data
       await updateSession({ name });
-      
+
       toast({
         title: "Success",
         description: "Your profile has been updated",
@@ -111,7 +127,7 @@ function UserSettingsContent() {
   // Handle password change
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!session?.user?.id) {
       toast({
         title: "Error",
@@ -120,7 +136,7 @@ function UserSettingsContent() {
       });
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast({
         title: "Error",
@@ -129,7 +145,7 @@ function UserSettingsContent() {
       });
       return;
     }
-    
+
     if (newPassword.length < 8) {
       toast({
         title: "Error",
@@ -138,31 +154,34 @@ function UserSettingsContent() {
       });
       return;
     }
-    
+
     setIsChangingPassword(true);
-    
+
     try {
-      const response = await fetch(`/api/users/${session.user.id}/change-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          currentPassword,
-          newPassword,
-        }),
-      });
-      
+      const response = await fetch(
+        `/blog-cms/api/users/${session.user.id}/change-password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            currentPassword,
+            newPassword,
+          }),
+        }
+      );
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to change password");
       }
-      
+
       // Clear password fields
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-      
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+
       toast({
         title: "Success",
         description: "Your password has been changed",
@@ -182,9 +201,9 @@ function UserSettingsContent() {
   const handleNotificationUpdate = async () => {
     toast({
       title: "Preferences Updated",
-      description: `Email notifications ${emailNotifications ? 'enabled' : 'disabled'}`,
+      description: `Email notifications ${emailNotifications ? "enabled" : "disabled"}`,
     });
-    
+
     // TODO: Implement API call to save preferences when API endpoint is available
   };
 
@@ -205,7 +224,7 @@ function UserSettingsContent() {
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
         </TabsList>
-        
+
         {/* Profile Tab */}
         <TabsContent value="profile" className="space-y-6">
           <Card>
@@ -219,11 +238,15 @@ function UserSettingsContent() {
               <form onSubmit={handleProfileUpdate} className="space-y-6">
                 <div className="flex items-center gap-6 mb-6">
                   <Avatar className="h-20 w-20">
-                    <AvatarImage src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name || email)}&background=random`} />
+                    <AvatarImage
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(name || email)}&background=random`}
+                    />
                     <AvatarFallback>{getInitials()}</AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="font-medium text-lg">{name || 'Your Name'}</h3>
+                    <h3 className="font-medium text-lg">
+                      {name || "Your Name"}
+                    </h3>
                     <div className="flex items-center gap-2 mt-1">
                       <p className="text-sm text-muted-foreground">{email}</p>
                       <Badge variant="outline" className="text-xs">
@@ -232,12 +255,14 @@ function UserSettingsContent() {
                       {isActive ? (
                         <Badge className="bg-green-500 text-xs">Active</Badge>
                       ) : (
-                        <Badge variant="destructive" className="text-xs">Inactive</Badge>
+                        <Badge variant="destructive" className="text-xs">
+                          Inactive
+                        </Badge>
                       )}
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name</Label>
@@ -248,7 +273,7 @@ function UserSettingsContent() {
                       placeholder="Your name"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
@@ -258,10 +283,11 @@ function UserSettingsContent() {
                       placeholder="Your email"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Your email cannot be changed. Contact an administrator if you need to update it.
+                      Your email cannot be changed. Contact an administrator if
+                      you need to update it.
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
                     <Input
@@ -271,11 +297,12 @@ function UserSettingsContent() {
                       placeholder="Your role"
                     />
                     <p className="text-xs text-muted-foreground">
-                      Your role determines what you can do in the system. Only administrators can change roles.
+                      Your role determines what you can do in the system. Only
+                      administrators can change roles.
                     </p>
                   </div>
                 </div>
-                
+
                 <Button type="submit" disabled={isLoading}>
                   {isLoading ? "Saving..." : "Save Profile"}
                 </Button>
@@ -283,7 +310,7 @@ function UserSettingsContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Security Tab */}
         <TabsContent value="security" className="space-y-6">
           <Card>
@@ -321,9 +348,9 @@ function UserSettingsContent() {
                       </Button>
                     </div>
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="new-password">New Password</Label>
                     <div className="relative">
@@ -339,9 +366,11 @@ function UserSettingsContent() {
                       Password must be at least 8 characters long
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
-                    <Label htmlFor="confirm-password">Confirm New Password</Label>
+                    <Label htmlFor="confirm-password">
+                      Confirm New Password
+                    </Label>
                     <div className="relative">
                       <Input
                         id="confirm-password"
@@ -353,7 +382,7 @@ function UserSettingsContent() {
                     </div>
                   </div>
                 </div>
-                
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button type="button" disabled={isChangingPassword}>
@@ -364,12 +393,14 @@ function UserSettingsContent() {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        Changing your password will log you out of all other devices. You'll need to log in again with your new password.
+                        Changing your password will log you out of all other
+                        devices. You&apos;ll need to log in again with your new
+                        password.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
+                      <AlertDialogAction
                         onClick={(e) => {
                           e.preventDefault();
                           handlePasswordChange(e as unknown as React.FormEvent);
@@ -384,7 +415,7 @@ function UserSettingsContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         {/* Preferences Tab */}
         <TabsContent value="preferences" className="space-y-6">
           <Card>
@@ -397,7 +428,9 @@ function UserSettingsContent() {
             <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label htmlFor="email-notifications">Email Notifications</Label>
+                  <Label htmlFor="email-notifications">
+                    Email Notifications
+                  </Label>
                   <p className="text-sm text-muted-foreground">
                     Receive email notifications for new comments and posts
                   </p>
@@ -411,9 +444,9 @@ function UserSettingsContent() {
                   }}
                 />
               </div>
-              
+
               <Separator />
-              
+
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label htmlFor="marketing-emails">Marketing Emails</Label>
@@ -427,14 +460,15 @@ function UserSettingsContent() {
                   onCheckedChange={() => {
                     toast({
                       title: "Coming Soon",
-                      description: "This preference will be available in a future update",
+                      description:
+                        "This preference will be available in a future update",
                     });
                   }}
                 />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader>
               <CardTitle>Theme Preferences</CardTitle>
@@ -451,9 +485,15 @@ function UserSettingsContent() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm">Light</Button>
-                  <Button variant="outline" size="sm">Dark</Button>
-                  <Button variant="default" size="sm">System</Button>
+                  <Button variant="outline" size="sm">
+                    Light
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Dark
+                  </Button>
+                  <Button variant="default" size="sm">
+                    System
+                  </Button>
                 </div>
               </div>
             </CardContent>
@@ -466,7 +506,7 @@ function UserSettingsContent() {
 
 export default function SettingsPage() {
   return (
-    <RoleGate allowedRoles={['admin', 'editor', 'author']} requireActive={true}>
+    <RoleGate allowedRoles={["admin", "editor", "author"]} requireActive={true}>
       <UserSettingsContent />
     </RoleGate>
   );

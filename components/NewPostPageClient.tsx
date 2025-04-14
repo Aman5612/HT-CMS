@@ -245,7 +245,7 @@ export default function NewPostPage() {
 
       console.log("Uploading feature image:", file.name);
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/blog-cms/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -403,7 +403,7 @@ export default function NewPostPage() {
   const fetchBlogs = async () => {
     try {
       setIsLoadingBlogs(true);
-      const response = await fetch("/api/posts");
+      const response = await fetch("/blog-cms/api/posts");
       if (!response.ok) throw new Error("Failed to fetch blogs");
 
       const data = await response.json();
@@ -1186,7 +1186,7 @@ export default function NewPostPage() {
       }
 
       // Create the post via API
-      const response = await fetch("/api/posts", {
+      const response = await fetch("/blog-cms/api/posts", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

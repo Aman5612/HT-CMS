@@ -3,7 +3,17 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UserPlus, Mail, Calendar, X, Clock, CheckCircle, User, Shield, AlertCircle } from "lucide-react";
+import {
+  UserPlus,
+  Mail,
+  Calendar,
+  X,
+  Clock,
+  CheckCircle,
+  User,
+  Shield,
+  AlertCircle,
+} from "lucide-react";
 import { format, isPast, isToday } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
@@ -24,12 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Tooltip,
   TooltipContent,
@@ -64,7 +69,7 @@ interface Invitation {
 
 export default function UsersPage() {
   return (
-    <RoleGate allowedRoles={['admin']}>
+    <RoleGate allowedRoles={["admin"]}>
       <UsersContent />
     </RoleGate>
   );
@@ -80,7 +85,7 @@ function UsersContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { data: session } = useSession();
-  
+
   // User management state
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userDialogOpen, setUserDialogOpen] = useState(false);
@@ -96,21 +101,21 @@ function UsersContent() {
     setLoading(true);
     try {
       // Fetch users
-      const usersResponse = await fetch("/api/users");
+      const usersResponse = await fetch("/blog-cms/api/users");
       const usersData = await usersResponse.json();
       // Adding default values for role and isActive if not present
       const enhancedUsers = usersData.map((user: User) => ({
         ...user,
         role: user.role || "author",
-        isActive: user.isActive !== undefined ? user.isActive : true
+        isActive: user.isActive !== undefined ? user.isActive : true,
       }));
       setUsers(enhancedUsers);
 
       // Fetch invitations
-      const invitationsResponse = await fetch("/api/invitations");
+      const invitationsResponse = await fetch("/blog-cms/api/invitations");
       const invitationsData = await invitationsResponse.json();
       setInvitations(invitationsData);
-      
+
       toast({
         title: "Data loaded",
         description: "Users and invitations loaded successfully",
@@ -129,7 +134,7 @@ function UsersContent() {
 
   const handleInviteUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!email) {
       toast({
         title: "Error",
@@ -138,33 +143,33 @@ function UsersContent() {
       });
       return;
     }
-    
+
     setIsSubmitting(true);
-    
+
     try {
-      const response = await fetch("/api/invitations", {
+      const response = await fetch("/blog-cms/api/invitations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email, role }),
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to send invitation");
       }
-      
+
       const newInvitation = await response.json();
-      
+
       // Add new invitation to state
       setInvitations((prev) => [newInvitation, ...prev]);
-      
+
       toast({
         title: "Success",
         description: `Invitation sent to ${email}`,
       });
-      
+
       // Reset form and close dialog
       setEmail("");
       setRole("author");
@@ -183,21 +188,21 @@ function UsersContent() {
 
   const handleRevokeInvitation = async (id: string) => {
     try {
-      const response = await fetch("/api/invitations", {
+      const response = await fetch("/blog-cms/api/invitations", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ id }),
       });
-      
+
       if (!response.ok) {
         throw new Error("Failed to revoke invitation");
       }
-      
+
       // Remove invitation from state
       setInvitations((prev) => prev.filter((inv) => inv.id !== id));
-      
+
       toast({
         title: "Success",
         description: "Invitation revoked successfully",
@@ -215,33 +220,45 @@ function UsersContent() {
   const getInvitationStatus = (invitation: Invitation) => {
     if (invitation.used) {
       return (
-        <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+        <Badge
+          variant="outline"
+          className="bg-green-500/10 text-green-500 border-green-500/20"
+        >
           <CheckCircle className="h-3 w-3 mr-1" />
           Accepted
         </Badge>
       );
     }
-    
+
     if (isPast(new Date(invitation.expiresAt))) {
       return (
-        <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/20">
+        <Badge
+          variant="outline"
+          className="bg-destructive/10 text-destructive border-destructive/20"
+        >
           <X className="h-3 w-3 mr-1" />
           Expired
         </Badge>
       );
     }
-    
+
     if (isToday(new Date(invitation.expiresAt))) {
       return (
-        <Badge variant="outline" className="bg-amber-500/10 text-amber-500 border-amber-500/20">
+        <Badge
+          variant="outline"
+          className="bg-amber-500/10 text-amber-500 border-amber-500/20"
+        >
           <Clock className="h-3 w-3 mr-1" />
           Expiring today
         </Badge>
       );
     }
-    
+
     return (
-      <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+      <Badge
+        variant="outline"
+        className="bg-blue-500/10 text-blue-500 border-blue-500/20"
+      >
         <Mail className="h-3 w-3 mr-1" />
         Pending
       </Badge>
@@ -254,7 +271,7 @@ function UsersContent() {
     setUserRole(user.role || "author");
     setUserIsActive(user.isActive !== undefined ? user.isActive : true);
     setUserDialogOpen(true);
-    
+
     toast({
       description: `Managing user: ${user.email}`,
     });
@@ -264,38 +281,40 @@ function UsersContent() {
   const handleUpdateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser) return;
-    
+
     setSavingUserChanges(true);
-    
+
     try {
-      const response = await fetch(`/api/users/${selectedUser.id}`, {
+      const response = await fetch(`/blog-cms/api/users/${selectedUser.id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           role: userRole,
-          isActive: userIsActive
+          isActive: userIsActive,
         }),
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error || "Failed to update user");
       }
-      
+
       // Update user in state
-      setUsers(users.map(user => 
-        user.id === selectedUser.id 
-          ? { ...user, role: userRole, isActive: userIsActive } 
-          : user
-      ));
-      
+      setUsers(
+        users.map((user) =>
+          user.id === selectedUser.id
+            ? { ...user, role: userRole, isActive: userIsActive }
+            : user
+        )
+      );
+
       toast({
         title: "Success",
         description: `User ${selectedUser.email} updated successfully`,
       });
-      
+
       // Close dialog
       setUserDialogOpen(false);
     } catch (error) {
@@ -373,13 +392,13 @@ function UsersContent() {
       </div>
 
       <AdminCheck />
-      
+
       <Tabs defaultValue="users">
         <TabsList className="mb-4">
           <TabsTrigger value="users">Active Users</TabsTrigger>
           <TabsTrigger value="invitations">Invitations</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="users">
           <Card>
             <CardHeader>
@@ -398,11 +417,17 @@ function UsersContent() {
                           {user.name || "Unnamed User"}
                         </p>
                         {user.isActive === false && (
-                          <Badge variant="outline" className="bg-gray-200 text-gray-700">
+                          <Badge
+                            variant="outline"
+                            className="bg-gray-200 text-gray-700"
+                          >
                             Inactive
                           </Badge>
                         )}
-                        <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-500/10 text-blue-500 border-blue-500/20"
+                        >
                           <Shield className="h-3 w-3 mr-1" />
                           {user.role || "Author"}
                         </Badge>
@@ -412,12 +437,13 @@ function UsersContent() {
                         <span className="mr-4">{user.email}</span>
                         <Calendar className="h-4 w-4 mr-1" />
                         <span>
-                          Joined {format(new Date(user.createdAt), "MMM d, yyyy")}
+                          Joined{" "}
+                          {format(new Date(user.createdAt), "MMM d, yyyy")}
                         </span>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
+                    <Button
+                      variant="ghost"
                       size="sm"
                       onClick={() => handleManageUser(user)}
                     >
@@ -440,7 +466,7 @@ function UsersContent() {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="invitations">
           <Card>
             <CardHeader>
@@ -457,7 +483,10 @@ function UsersContent() {
                       <div className="flex items-center gap-2">
                         <p className="font-medium">{invitation.email}</p>
                         {getInvitationStatus(invitation)}
-                        <Badge variant="outline" className="bg-blue-500/10 text-blue-500 border-blue-500/20">
+                        <Badge
+                          variant="outline"
+                          className="bg-blue-500/10 text-blue-500 border-blue-500/20"
+                        >
                           <Shield className="h-3 w-3 mr-1" />
                           {invitation.role}
                         </Badge>
@@ -465,24 +494,33 @@ function UsersContent() {
                       <div className="flex items-center text-sm text-muted-foreground">
                         <Calendar className="h-4 w-4 mr-1" />
                         <span>
-                          Created on {format(new Date(invitation.createdAt), "MMM d, yyyy")}
+                          Created on{" "}
+                          {format(
+                            new Date(invitation.createdAt),
+                            "MMM d, yyyy"
+                          )}
                         </span>
                         <span className="mx-2">•</span>
                         <Clock className="h-4 w-4 mr-1" />
                         <span>
-                          Expires on {format(new Date(invitation.expiresAt), "MMM d, yyyy")}
+                          Expires on{" "}
+                          {format(
+                            new Date(invitation.expiresAt),
+                            "MMM d, yyyy"
+                          )}
                         </span>
                       </div>
                     </div>
-                    {!invitation.used && !isPast(new Date(invitation.expiresAt)) && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleRevokeInvitation(invitation.id)}
-                      >
-                        Revoke
-                      </Button>
-                    )}
+                    {!invitation.used &&
+                      !isPast(new Date(invitation.expiresAt)) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleRevokeInvitation(invitation.id)}
+                        >
+                          Revoke
+                        </Button>
+                      )}
                   </div>
                 ))}
 
@@ -501,15 +539,13 @@ function UsersContent() {
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       {/* User management dialog */}
       <Dialog open={userDialogOpen} onOpenChange={setUserDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Manage User</DialogTitle>
-            <DialogDescription>
-              Update user role and status.
-            </DialogDescription>
+            <DialogDescription>Update user role and status.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleUpdateUser}>
             <div className="space-y-4 py-2">
@@ -536,7 +572,8 @@ function UsersContent() {
                   <br />
                   <strong>Editor:</strong> Can create and edit all content
                   <br />
-                  <strong>Author:</strong> Can only view and edit their own content
+                  <strong>Author:</strong> Can only view and edit their own
+                  content
                 </p>
               </div>
               <Separator />
@@ -547,8 +584,8 @@ function UsersContent() {
                     Inactive accounts cannot access the system
                   </p>
                 </div>
-                <Switch 
-                  id="userIsActive" 
+                <Switch
+                  id="userIsActive"
                   checked={userIsActive}
                   onCheckedChange={setUserIsActive}
                 />

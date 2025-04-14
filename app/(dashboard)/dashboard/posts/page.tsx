@@ -96,7 +96,7 @@ function PostsContent() {
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/posts");
+      const response = await fetch("/blog-cms/api/posts");
       const data = await response.json();
 
       // Ensure data is an array
@@ -153,7 +153,7 @@ function PostsContent() {
     if (!postToDelete) return;
 
     try {
-      const response = await fetch(`/api/posts/${postToDelete}`, {
+      const response = await fetch(`/blog-cms/api/posts/${postToDelete}`, {
         method: "DELETE",
       });
 
@@ -182,7 +182,7 @@ function PostsContent() {
     if (!postToChangeStatus || !newStatus) return;
 
     try {
-      const response = await fetch(`/api/posts/${postToChangeStatus.id}`, {
+      const response = await fetch(`/bog-cms/api/posts/${postToChangeStatus.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

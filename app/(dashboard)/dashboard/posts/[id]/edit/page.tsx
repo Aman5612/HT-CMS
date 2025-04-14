@@ -195,7 +195,7 @@ function EditPostContent() {
   useEffect(() => {
     const fetchPost = async () => {
       try {
-        const response = await fetch(`/api/posts/${id}`);
+        const response = await fetch(`/blog-cms/api/posts/${id}`);
         if (!response.ok) throw new Error("Failed to fetch post");
         const post = await response.json();
         setTitle(post.title);
@@ -727,7 +727,7 @@ function EditPostContent() {
 
       // Fetch current media from the API to ensure we don't lose existing images
       console.log("Fetching current post media to ensure persistence");
-      const currentPostResponse = await fetch(`/api/posts/${id}`);
+      const currentPostResponse = await fetch(`/blog-cms/api/posts/${id}`);
       if (!currentPostResponse.ok) {
         console.error("Failed to fetch current post data");
       }
@@ -857,7 +857,7 @@ function EditPostContent() {
       console.log("Full post data being sent:", postData);
 
       // Update the post via API
-      const response = await fetch(`/api/posts/${id}`, {
+      const response = await fetch(`/blog-cms/api/posts/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -990,7 +990,7 @@ function EditPostContent() {
 
       console.log("Uploading feature image:", file.name);
 
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/blog-cms/api/upload", {
         method: "POST",
         body: formData,
       });
@@ -1437,7 +1437,7 @@ function EditPostContent() {
   const fetchBlogs = async () => {
     try {
       setIsLoadingBlogs(true);
-      const response = await fetch("/api/posts");
+      const response = await fetch("/blog-cms/api/posts");
       if (!response.ok) throw new Error("Failed to fetch blogs");
 
       const data = await response.json();

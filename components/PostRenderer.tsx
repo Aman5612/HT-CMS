@@ -54,7 +54,7 @@ export default function PostRenderer({ post }: any) {
           // Card block ID
           if (cardIndex < post.cardBlocks.length) {
             const cardBlock = post.cardBlocks[cardIndex];
-            const response = await fetch(`/api/cards/${cardBlock.cardId}`);
+            const response = await fetch(`/blog-cms/api/cards/${cardBlock.cardId}`);
             const cardData = await response.json();
 
             output.push(
