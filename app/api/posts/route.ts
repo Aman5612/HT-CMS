@@ -59,7 +59,33 @@ export async function OPTIONS(request: NextRequest) {
 // GET handler to fetch all posts
 export async function GET(request: NextRequest) {
   try {
+    const url = new URL(request.url);
+    
+    // Parse query parameters
+    const page = parseInt(url.searchParams.get('page') || '1', 10);
+    const limit = parseInt(url.searchParams.get('limit') || '10', 10);
+    const title = url.searchParams.get('title') || '';
+    
+    // Calculate skip for pagination
+    const skip = (page - 1) * limit;
+    
+    // Build where condition
+    const where: any = {};
+    
+    // Add title search if provided
+    if (title) {
+      where.title = {
+        contains: title,
+        mode: 'insensitive' // Case insensitive search
+      };
+    }
+    
+    // Get total count for pagination
+    const totalCount = await prisma.post.count({ where });
+    
+    // Fetch posts with pagination and filters
     const posts = await prisma.post.findMany({
+      where,
       include: {
         author: {
           select: {
@@ -73,14 +99,34 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      skip,
+      take: limit,
     });
 
-    return corsHeaders(NextResponse.json(posts));
+    // Create pagination metadata
+    const totalPages = Math.ceil(totalCount / limit);
+    const hasNextPage = page < totalPages;
+    const hasPreviousPage = page > 1;
+    
+    // Return results with pagination metadata
+    return corsHeaders(
+      NextResponse.json({
+        data: posts,
+        pagination: {
+          total: totalCount,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNextPage,
+          hasPreviousPage
+        }
+      })
+    );
   } catch (error) {
     console.error("Error fetching posts:", error);
     return corsHeaders(
       NextResponse.json(
-        { error: "Internal Server Error", posts: [] },
+        { error: "Internal Server Error", data: [], pagination: {} },
         { status: 500 }
       )
     );

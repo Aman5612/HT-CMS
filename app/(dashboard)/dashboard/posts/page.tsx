@@ -84,6 +84,7 @@ function PostsContent() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [postToDelete, setPostToDelete] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [titleSearch, setTitleSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -92,15 +93,40 @@ function PostsContent() {
   const { data: session } = useSession();
   const router = useRouter();
   const { toast } = useToast();
+  
+  // Add pagination state
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    total: 0,
+    limit: 10,
+    hasNextPage: false,
+    hasPreviousPage: false
+  });
 
   const fetchPosts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/blog-cms/api/posts");
+      // Build query parameters for pagination and title search
+      const params = new URLSearchParams();
+      params.append('page', pagination.currentPage.toString());
+      params.append('limit', pagination.limit.toString());
+      
+      // Add title search if exists
+      if (titleSearch) {
+        params.append('title', titleSearch);
+      }
+      
+      const response = await fetch(`/blog-cms/api/posts?${params.toString()}`);
       const data = await response.json();
 
-      // Ensure data is an array
-      const postsArray = Array.isArray(data) ? data : [];
+      // Handle new response structure with data and pagination
+      const postsArray = Array.isArray(data.data) ? data.data : [];
+      
+      // Update pagination state
+      if (data.pagination) {
+        setPagination(data.pagination);
+      }
 
       // Filter posts based on user role
       let filteredPosts = postsArray;
@@ -119,12 +145,11 @@ function PostsContent() {
         );
       }
 
-      // Apply search filter if search term exists
+      // Apply search filter for author name (client-side filtering)
       if (search) {
         const searchLower = search.toLowerCase();
         filteredPosts = filteredPosts.filter(
           (post: any) =>
-            post.title.toLowerCase().includes(searchLower) ||
             (post.author?.name &&
               post.author.name.toLowerCase().includes(searchLower))
         );
@@ -147,7 +172,41 @@ function PostsContent() {
 
   useEffect(() => {
     fetchPosts();
-  }, [statusFilter, search, session]);
+  }, [pagination.currentPage, pagination.limit, titleSearch, statusFilter, search, session]);
+
+  // Add handler for title search
+  const handleTitleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPagination(prev => ({ ...prev, currentPage: 1 })); // Reset to first page on new search
+    fetchPosts();
+  };
+
+  // Add pagination handlers
+  const handlePreviousPage = () => {
+    if (pagination.hasPreviousPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage - 1
+      }));
+    }
+  };
+
+  const handleNextPage = () => {
+    if (pagination.hasNextPage) {
+      setPagination(prev => ({
+        ...prev,
+        currentPage: prev.currentPage + 1
+      }));
+    }
+  };
+
+  const handlePageSizeChange = (value: string) => {
+    setPagination(prev => ({
+      ...prev,
+      limit: parseInt(value, 10),
+      currentPage: 1 // Reset to first page when changing page size
+    }));
+  };
 
   const handleDelete = async () => {
     if (!postToDelete) return;
@@ -331,91 +390,128 @@ function PostsContent() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Posts</h1>
-          <p className="text-sm text-muted-foreground">
-            Manage your blog posts
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={viewMode === "list" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("list")}
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>List View</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={viewMode === "grid" ? "default" : "outline"}
-                  size="icon"
-                  onClick={() => setViewMode("grid")}
-                >
-                  <Grid className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Grid View</TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">Posts</h1>
+        {session?.user?.role !== "viewer" && (
           <Button onClick={handleNewPost}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Post
+            <Plus className="mr-2 h-4 w-4" /> New Post
+          </Button>
+        )}
+      </div>
+
+      <div className="flex flex-col space-y-4 md:flex-row md:space-y-0 md:space-x-4 md:items-center mb-4">
+        <div className="flex flex-1 max-w-md">
+          <div className="relative w-full">
+            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by author name..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 w-full"
+            />
+          </div>
+        </div>
+
+        {/* Add title search form */}
+        <form onSubmit={handleTitleSearch} className="flex flex-1 max-w-md">
+          <div className="relative w-full">
+            <FileText className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by title..."
+              value={titleSearch}
+              onChange={(e) => setTitleSearch(e.target.value)}
+              className="pl-8 w-full"
+            />
+          </div>
+          <Button type="submit" variant="secondary" className="ml-2">
+            Search
+          </Button>
+        </form>
+
+        <Select
+          value={statusFilter}
+          onValueChange={setStatusFilter}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Posts</SelectItem>
+            <SelectItem value="DRAFT">Draft</SelectItem>
+            <SelectItem value="PUBLISHED">Published</SelectItem>
+            <SelectItem value="ARCHIVED">Archived</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <div className="flex border rounded-md">
+          <Button
+            variant={viewMode === "list" ? "default" : "ghost"}
+            size="sm"
+            className="h-9 rounded-none rounded-l-md"
+            onClick={() => setViewMode("list")}
+          >
+            <List className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            size="sm"
+            className="h-9 rounded-none rounded-r-md"
+            onClick={() => setViewMode("grid")}
+          >
+            <Grid className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filter Posts</CardTitle>
-          <CardDescription>
-            Use the filters below to find specific posts
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <Search className="h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search posts..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-10"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="h-10">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="DRAFT">Draft</SelectItem>
-                    <SelectItem value="PUBLISHED">Published</SelectItem>
-                    <SelectItem value="ARCHIVED">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Rest of the code - Table/Grid View */}
+      
+      {/* Add pagination controls at the bottom */}
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex items-center space-x-2">
+          <p className="text-sm text-muted-foreground">
+            Showing {posts.length > 0 ? (pagination.currentPage - 1) * pagination.limit + 1 : 0} to{" "}
+            {Math.min(pagination.currentPage * pagination.limit, pagination.total)} of{" "}
+            {pagination.total} posts
+          </p>
+          <Select
+            value={pagination.limit.toString()}
+            onValueChange={handlePageSizeChange}
+          >
+            <SelectTrigger className="w-[70px]">
+              <SelectValue placeholder="10" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5</SelectItem>
+              <SelectItem value="10">10</SelectItem>
+              <SelectItem value="20">20</SelectItem>
+              <SelectItem value="50">50</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePreviousPage}
+            disabled={!pagination.hasPreviousPage}
+          >
+            Previous
+          </Button>
+          <span className="text-sm">
+            Page {pagination.currentPage} of {pagination.totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleNextPage}
+            disabled={!pagination.hasNextPage}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
 
       {/* List View */}
       {viewMode === "list" && (
