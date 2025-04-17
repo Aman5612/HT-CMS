@@ -1102,7 +1102,7 @@ export default function NewPostPage() {
         description: "You must be logged in to create a post",
         variant: "destructive",
       });
-      router.push("/login");
+      router.push("/blog-cms/login");
       return;
     }
 

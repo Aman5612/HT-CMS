@@ -112,7 +112,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
 
       // Redirect to login after a delay
       setTimeout(() => {
-        router.push("/login");
+        router.push("/blog-cms/login");
       }, 3000);
     } catch (error) {
       console.error("Error creating account:", error);
@@ -161,7 +161,10 @@ export default function JoinPage({ params }: { params: { token: string } }) {
             </Alert>
           </CardContent>
           <CardFooter>
-            <Button className="w-full" onClick={() => router.push("/login")}>
+            <Button
+              className="w-full"
+              onClick={() => router.push("/blog-cms/login")}
+            >
               Go to Login
             </Button>
           </CardFooter>

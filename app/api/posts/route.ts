@@ -136,42 +136,26 @@ export async function GET(request: NextRequest) {
 // POST handler to create a new post
 export async function POST(request: NextRequest) {
   try {
-    const session = await getSession();
-
-    if (!session || !session.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
-        status: 401,
-      });
-    }
-
-    // Check if user has appropriate role to create posts
-    const allowedRoles = ["admin", "editor", "author"];
-    if (!allowedRoles.includes(session.user.role)) {
-      return new Response(
-        JSON.stringify({
-          error: "You don't have permission to create posts",
-        }),
-        { status: 403 }
-      );
-    }
-
     const data = await request.json();
 
-    // Set initial status based on user role
-    // Admins and editors can create posts with any status
-    // Authors can only create drafts
-    let status = data.status || "DRAFT";
-
-    if (session.user.role === "author" && status !== "DRAFT") {
-      // Force author-created posts to be drafts
-      status = "DRAFT";
-    }
+    // Set status from request or default to DRAFT
+    const status = data.status || "DRAFT";
 
     // Check if manualId is provided
     if (!data.manualId) {
       return new Response(
         JSON.stringify({
-          error: "Custom ID is required",
+          error: "Custom ID (manualId) is required",
+        }),
+        { status: 400 }
+      );
+    }
+
+    // Check if authorId is provided in the request body
+    if (!data.authorId) {
+      return new Response(
+        JSON.stringify({
+          error: "Author ID (authorId) is required in the request body",
         }),
         { status: 400 }
       );
@@ -185,8 +169,6 @@ export async function POST(request: NextRequest) {
         .replace(/[^\w\s]/gi, "")
         .replace(/\s+/g, "-");
 
-    // Note: This code sets the provided manual ID as the primary key
-
     // Prepare post data
     const postData: any = {
       id: data.manualId, // Use manual ID as the primary key
@@ -195,7 +177,7 @@ export async function POST(request: NextRequest) {
       slug: slug,
       status: status,
       excerpt: data.excerpt || data.content.substring(0, 157) + "...",
-      authorId: session.user.id, // Always use the current user's ID
+      authorId: data.authorId,
       metaTitle: data.metaTitle || data.title,
       metaDescription: data.metaDescription || data.excerpt,
       featureImage: data.featureImage || null,

@@ -12,25 +12,24 @@ model User {
   email     String   @unique
   password  String
   name      String?
-  role      String   @default("author")
-  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  isActive  Boolean  @default(true)
+  role      String   @default("author")
   posts     Post[]
 }
 
 model Invitation {
-  id         String    @id @default(uuid())
-  email      String    @unique
-  token      String    @unique
-  role       String    @default("author")
-  expiresAt  DateTime
-  createdAt  DateTime  @default(now())
-  used       Boolean   @default(false)
+  id        String   @id @default(uuid())
+  email     String   @unique
+  token     String   @unique
+  role      String   @default("author")
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  used      Boolean  @default(false)
 }
 
 model Post {
-  id              String          @id
   title           String
   content         String
   slug            String          @unique
@@ -39,14 +38,15 @@ model Post {
   authorId        String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  metaTitle       String?
-  metaDescription String?
   featureImage    String?
   featureImageAlt String?
+  metaDescription String?
+  metaTitle       String?
   packageIds      String[]        @default([])
-  relatedBlogIds  String[]        @default([])
+  id              String          @id
   customTitle     String?
   keywords        String?
+  relatedBlogIds  String[]        @default([])
   tableOfContents Json?           @default("{\"sections\": []}")
   author          User            @relation(fields: [authorId], references: [id])
   cardBlocks      PostCardBlock[]
